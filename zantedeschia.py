@@ -4,6 +4,8 @@ from errno import EAGAIN, EINTR
 import zmq
 
 class AsyncZMQSocket:
+    """An asynchronous wrapper around a ZeroMQ socket.
+    """
     _recv_callback = None
 
     def __init__(self, socket:zmq.Socket, loop=None):
@@ -27,6 +29,8 @@ class AsyncZMQSocket:
         self.socket.close(linger)
 
     def _wakeup(self):
+        """Check for any sending or receiving we can do.
+        """
         events = self.socket.getsockopt(zmq.EVENTS)
         rescheduled = False
 
@@ -100,6 +104,21 @@ class AsyncZMQSocket:
                 fut.set_result(res)
 
     def recv_multipart(self):
+        """Asynchronously receive a multipart message.
+
+        Returns a future, the result of which will be a list of message parts
+        (bytes objects).
+
+        The normal way to use this is::
+
+            msg_parts = yield from s.recv_multipart()
+
+        Several coroutines may be waiting to receive at once; they will get
+        incoming messages in the order in which they called recv_multipart().
+
+        Mixing use of this method with the ``on_recv()`` callback interface
+        is not supported.
+        """
         self._init_loop()
         f = asyncio.Future()
         self._recv_queue.append(f)
@@ -107,14 +126,43 @@ class AsyncZMQSocket:
         return f
 
     def on_recv(self, callback):
+        """Arrange for callback to be called when the socket receives a message.
+
+        The callback will be called with a single argument, a list of parts in
+        a multipart message.
+
+        Mixing this API with ``recv_multipart()`` is not supported.
+        """
         self._recv_callback = callback
         self._init_loop()
         self._schedule()
 
     def send(self, data, flags=0):
+        """Send a single message part.
+
+        Typical use::
+
+            yield from s.send(b'data')
+
+        This returns a future, but the completion of that future doesn't mean
+        that the message has been sent, only that it has gone to ZMQ's internal
+        queue. Waiting on the future is useful for rate limiting: it will block
+        if ZMQ's queue reaches the high water mark.
+        """
         return self.send_multipart([data], flags=flags)
 
     def send_multipart(self, msg_parts, flags=0):
+        """Send a multipart message.
+
+        Typical use::
+
+            yield from s.send_multipart([b'some', b'data'])
+
+        This returns a future, but the completion of that future doesn't mean
+        that the message has been sent, only that it has gone to ZMQ's internal
+        queue. Waiting on the future is useful for rate limiting: it will block
+        if ZMQ's queue reaches the high water mark.
+        """
         self._init_loop()
         f = asyncio.Future()
         self._send_queue.append((msg_parts, f, flags))
