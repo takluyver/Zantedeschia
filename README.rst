@@ -20,7 +20,9 @@ Use this at your own risk. MinRK, the author of PyZMQ, told me that I definitely
 shouldn't rely on the ZMQ file descriptors for an event loop, but I'm doing
 exactly that.
 
-Ping server example::
+Ping server example:
+
+.. code:: python
 
     import asyncio, zmq, zantedeschia
 
@@ -36,7 +38,9 @@ Ping server example::
 
     asyncio.get_event_loop().run_until_complete(pong())
 
-Using the ``on_recv`` API instead::
+Using the ``on_recv`` API instead:
+
+.. code:: python
 
     import asyncio, zmq, zantedeschia
 
