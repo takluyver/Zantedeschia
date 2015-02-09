@@ -83,7 +83,6 @@ class AsyncZMQSocket:
                 try:
                     self._recv_callback(parts)
                 except:
-                    self.loop.call_soon()
                     raise
 
         else:
